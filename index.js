@@ -1,3 +1,4 @@
+const knex = require("knex");
 const oidc_payloads = "oidc_payloads";
 
 const types = [
@@ -16,20 +17,47 @@ const types = [
   "Grant",
 ].reduce((map, name, i) => ({ ...map, [name]: i + 1 }), {});
 
-module.exports.knexAdapter = function (client) {
+function knexAdapter(client) {
+
+  let _client = undefined;
+  let _cleaner = undefined;
+  let _lastCleaned = Date.now();
+
+  function getClient() {
+    if (typeof _client == "undefined")
+      _client = typeof client == "function" ? client : knex(client);
+    return _client;
+  }
+
+  function cleaner(adapter) {
+    if (shouldClean())
+      _cleaner = clean().then(() => adapter);
+    return _cleaner;
+  }
+
+  function shouldClean() {
+    return typeof _cleaner == "undefined" ||
+      Date.now() > _lastCleaned + 3600000;
+  }
+
+  function clean() {
+    return getClient()
+      .table(oidc_payloads)
+      .where("expiresAt", "<", new Date())
+      .delete();
+  }
 
   return class DbAdapter {
     constructor(name) {
+      this.client = getClient();
       this.name = name;
       this.type = types[name];
-      this.cleaned = client.table(oidc_payloads).where("expiresAt", "<", new Date()).delete().then(() => this);
+      this.cleaned = cleaner(this);
     }
 
     async upsert(id, payload, expiresIn) {
-      const expiresAt = expiresIn
-        ? new Date(Date.now() + expiresIn * 1000)
-        : undefined;
-      await client
+      const expiresAt = this.getExpireAt(expiresIn);
+      await this.client
         .table(oidc_payloads)
         .insert({
           id,
@@ -44,8 +72,14 @@ module.exports.knexAdapter = function (client) {
         .merge();
     }
 
+    getExpireAt(expiresIn) {
+      return expiresIn
+        ? new Date(Date.now() + expiresIn * 1000)
+        : undefined;
+    }
+
     get _table() {
-      return client.table(oidc_payloads).where("type", this.type);
+      return this.client.table(oidc_payloads).where("type", this.type);
     }
 
     _rows(obj) {
@@ -90,3 +124,17 @@ module.exports.knexAdapter = function (client) {
     }
   };
 }
+
+const defaultConfig = {
+  client: "pg",
+  connection: {
+    host: "localhost",
+    user: "postgres",
+    password: "*********",
+    database: "postgres"
+  }
+};
+const defaultAdapter = knexAdapter(defaultConfig)
+defaultAdapter.knexAdapter = knexAdapter
+
+module.exports = defaultAdapter

@@ -102,3 +102,10 @@ test("Clean expired", async t => {
   }).catch(t.fail);
   t.end();
 });
+
+test("Default adapter", async t => {
+  const def = require(".");
+  const adapter = new def("AccessToken");
+  await adapter.cleaned.catch(() => t.pass());
+  t.end();
+});
