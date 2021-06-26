@@ -1,3 +1,9 @@
+/*
+ * Tests, pakcage.json and usage examples can be found here :
+ * https://github.com/ydarma/oidc-provider-knex-adapter
+ * This code is provided under "The Unlicense"
+ */
+
 const knex = require("knex");
 const oidc_payloads = "oidc_payloads";
 
@@ -17,10 +23,9 @@ const types = [
   "Grant",
 ].reduce((map, name, i) => ({ ...map, [name]: i + 1 }), {});
 
-function knexAdapter(client) {
+function knexAdapter(client, cleanInterval = 3600000) {
 
   let _client = undefined;
-  let _cleaner = undefined;
   let _lastCleaned = Date.now();
 
   function getClient() {
@@ -29,15 +34,8 @@ function knexAdapter(client) {
     return _client;
   }
 
-  function cleaner(adapter) {
-    if (shouldClean())
-      _cleaner = clean().then(() => adapter);
-    return _cleaner;
-  }
-
   function shouldClean() {
-    return typeof _cleaner == "undefined" ||
-      Date.now() > _lastCleaned + 3600000;
+    return Date.now() > _lastCleaned + cleanInterval;
   }
 
   function clean() {
@@ -47,17 +45,22 @@ function knexAdapter(client) {
       .delete();
   }
 
+  function getExpireAt(expiresIn) {
+    return expiresIn
+      ? new Date(Date.now() + expiresIn * 1000)
+      : undefined;
+  }
+
   return class DbAdapter {
     constructor(name) {
-      this.client = getClient();
       this.name = name;
       this.type = types[name];
-      this.cleaned = cleaner(this);
+      if (shouldClean()) DbAdapter._cleaned = clean();
     }
 
     async upsert(id, payload, expiresIn) {
-      const expiresAt = this.getExpireAt(expiresIn);
-      await this.client
+      const expiresAt = getExpireAt(expiresIn);
+      await getClient()
         .table(oidc_payloads)
         .insert({
           id,
@@ -72,14 +75,10 @@ function knexAdapter(client) {
         .merge();
     }
 
-    getExpireAt(expiresIn) {
-      return expiresIn
-        ? new Date(Date.now() + expiresIn * 1000)
-        : undefined;
-    }
-
     get _table() {
-      return this.client.table(oidc_payloads).where("type", this.type);
+      return getClient()
+        .table(oidc_payloads)
+        .where("type", this.type);
     }
 
     _rows(obj) {
@@ -127,13 +126,9 @@ function knexAdapter(client) {
 
 const defaultConfig = {
   client: "pg",
-  connection: {
-    host: "localhost",
-    user: "postgres",
-    password: "*********",
-    database: "postgres"
-  }
+  connection: "postgresql://"
 };
+
 const defaultAdapter = knexAdapter(defaultConfig)
 defaultAdapter.knexAdapter = knexAdapter
 

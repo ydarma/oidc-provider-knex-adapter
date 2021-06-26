@@ -88,24 +88,28 @@ test("Consume", async t => {
 });
 
 test("Clean expired", async t => {
-  const adapter0 = new DbAdapter("AccessToken");
+  const testAdapter = knexAdapter(client, 1);
+  const adapter = new testAdapter("AccessToken");
   const id = uuid();
   const data = { test: ["aa"] };
-  await adapter0.upsert(id, data, 1);
+  await adapter.upsert(id, data, 1);
   await new Promise(r => {
     setTimeout(() => {
-      r(new DbAdapter("AccessToken"));
-    }, 1500)
-  }).then(async adapter => {
-      const result = await adapter.cleaned.then(a => a.find(id));
-      t.notOk(result);
-  }).catch(t.fail);
+      new testAdapter("AccessToken");
+      r();
+    }, 1050)
+  }).then(async () => {
+    t.ok(testAdapter._cleaned);
+    await testAdapter._cleaned;
+    const result = await adapter.find(id);
+    t.notOk(result);
+  });
   t.end();
 });
 
 test("Default adapter", async t => {
   const def = require(".");
   const adapter = new def("AccessToken");
-  await adapter.cleaned.catch(() => t.pass());
+  await adapter.upsert(uuid(), {}).catch(()=>{});
   t.end();
 });
