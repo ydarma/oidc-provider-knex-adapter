@@ -1,0 +1,28 @@
+{
+  "name": "oidc-provide-knex-adapter",
+  "version": "1.0.0",
+  "description": "Secure gateway",
+  "main": "src/index.js",
+  "scripts": {
+    "setup": "./node_modules/.bin/knex migrate:latest",
+    "test": "npm run setup ; ./node_modules/.bin/tap ./index.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/invarture-arone/TrueNorth.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/invarture-arone/TrueNorth/issues"
+  },
+  "homepage": "https://github.com/invarture-arone/TrueNorth#readme",
+  "dependencies": {
+    "knex": "^0.95.6"
+  },
+  "devDependencies": {
+    "sqlite3": "^5.0.2",
+    "tap": "^15.0.9",
+    "uuid": "^8.3.2"
+  }
+}
