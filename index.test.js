@@ -6,7 +6,8 @@ const { knexAdapter } = require(".");
 const { v4: uuid } = require("uuid");
 const assert = require("assert");
 
-const client = knex(config[process.env.NODE_ENV ?? "development"]);
+const clientConfig = config[process.env.NODE_ENV ?? "development"];
+const client = knex(clientConfig);
 const DbAdapter = knexAdapter(client);
 
 t.teardown(() => client.destroy());
@@ -88,28 +89,24 @@ test("Consume", async t => {
 });
 
 test("Clean expired", async t => {
-  const testAdapter = knexAdapter(client, 1);
+  const testAdapter = knexAdapter(client, { cleanup: 1 });
   const adapter = new testAdapter("AccessToken");
   const id = uuid();
   const data = { test: ["aa"] };
   await adapter.upsert(id, data, 1);
   await new Promise(r => {
-    setTimeout(() => {
-      new testAdapter("AccessToken");
-      r();
-    }, 1050)
-  }).then(async () => {
-    t.ok(testAdapter._cleaned);
-    await testAdapter._cleaned;
-    const result = await adapter.find(id);
-    t.notOk(result);
-  });
+    setTimeout(() => { r(testAdapter.cleaning) }, 1050)
+  })
+  const result = await adapter.find(id);
+  t.notOk(result);
+  testAdapter.destroy();
   t.end();
 });
 
-test("Default adapter", async t => {
-  const def = require(".");
-  const adapter = new def("AccessToken");
-  await adapter.upsert(uuid(), {}).catch(()=>{});
+test("Adapter from config", async t => {
+  const defaultAdapter = knexAdapter(clientConfig)
+  const adapter = new defaultAdapter("AccessToken");
+  t.ok(typeof adapter.upsert == "function");
+  t.ok(typeof adapter.find == "function");
   t.end();
 });

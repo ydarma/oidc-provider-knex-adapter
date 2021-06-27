@@ -1,7 +1,12 @@
 import { Knex } from "knex";
 import { Adapter, AdapterConstructor } from "oidc-provider";
 
-declare function knexAdapter(client: Knex, cleanInterval?: number): AdapterConstructor;
+
+type AdapterOptions = {
+  cleanup: "never" | number = "never";
+};
+
+declare function knexAdapter(client: Knex, options: AdapterOptions = {}): AdapterConstructor;
 declare const defaultAdapter: Adapter;
 
 export default defaultAdapter;

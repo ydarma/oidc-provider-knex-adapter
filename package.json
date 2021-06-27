@@ -1,7 +1,7 @@
 {
-  "name": "oidc-provide-knex-adapter",
+  "name": "oidc-provider-knex-adapter",
   "version": "1.0.0",
-  "description": "Secure gateway",
+  "description": "A knex based adapter for oidc-provider (https://www.npmjs.com/package/oidc-provider)",
   "main": "src/index.js",
   "scripts": {
     "setup": "./node_modules/.bin/knex migrate:latest",

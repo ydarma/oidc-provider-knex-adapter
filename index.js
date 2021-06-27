@@ -5,6 +5,7 @@
  */
 
 const knex = require("knex");
+const config = require("./knexfile");
 const oidc_payloads = "oidc_payloads";
 
 const types = [
@@ -23,23 +24,15 @@ const types = [
   "Grant",
 ].reduce((map, name, i) => ({ ...map, [name]: i + 1 }), {});
 
-function knexAdapter(client, cleanInterval = 3600000) {
+function knexAdapter(client, options = { cleanup: "never" }) {
 
-  let _client = undefined;
-  let _lastCleaned = Date.now();
+  let _cleaner = undefined;
+  let _cleaning = undefined;
 
-  function getClient() {
-    if (typeof _client == "undefined")
-      _client = typeof client == "function" ? client : knex(client);
-    return _client;
-  }
-
-  function shouldClean() {
-    return Date.now() > _lastCleaned + cleanInterval;
-  }
+  client = typeof client == "function" ? client : knex(client);
 
   function clean() {
-    return getClient()
+    _cleaning = client
       .table(oidc_payloads)
       .where("expiresAt", "<", new Date())
       .delete();
@@ -51,16 +44,18 @@ function knexAdapter(client, cleanInterval = 3600000) {
       : undefined;
   }
 
+  if (typeof options.cleanup == "number")
+    _cleaner = setInterval(clean, options.cleanup * 1000);
+
   return class DbAdapter {
     constructor(name) {
       this.name = name;
       this.type = types[name];
-      if (shouldClean()) DbAdapter._cleaned = clean();
     }
 
     async upsert(id, payload, expiresIn) {
       const expiresAt = getExpireAt(expiresIn);
-      await getClient()
+      await client
         .table(oidc_payloads)
         .insert({
           id,
@@ -76,7 +71,7 @@ function knexAdapter(client, cleanInterval = 3600000) {
     }
 
     get _table() {
-      return getClient()
+      return client
         .table(oidc_payloads)
         .where("type", this.type);
     }
@@ -121,15 +116,15 @@ function knexAdapter(client, cleanInterval = 3600000) {
     consume(id) {
       return this._rows({ id }).update({ consumedAt: new Date() });
     }
+
+    static destroy() {
+      clearInterval(_cleaner);
+    }
+
+    static get cleaning() {
+      return _cleaning;
+    }
   };
 }
 
-const defaultConfig = {
-  client: "pg",
-  connection: "postgresql://"
-};
-
-const defaultAdapter = knexAdapter(defaultConfig)
-defaultAdapter.knexAdapter = knexAdapter
-
-module.exports = defaultAdapter
+module.exports = { knexAdapter }
