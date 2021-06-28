@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const clientConfig = config[process.env.NODE_ENV ?? "development"];
 const client = knex(clientConfig);
-const DbAdapter = knexAdapter(client);
+const DbAdapter = knexAdapter(client, { cleanup: false });
 
 t.teardown(() => client.destroy());
 
@@ -108,5 +108,6 @@ test("Adapter from config", async t => {
   const adapter = new defaultAdapter("AccessToken");
   t.ok(typeof adapter.upsert == "function");
   t.ok(typeof adapter.find == "function");
+  defaultAdapter.destroy();
   t.end();
 });

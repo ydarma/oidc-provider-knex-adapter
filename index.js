@@ -24,7 +24,7 @@ const types = [
   "Grant",
 ].reduce((map, name, i) => ({ ...map, [name]: i + 1 }), {});
 
-function knexAdapter(client, options = { cleanup: "never" }) {
+function knexAdapter(client, options = { cleanup: 3600 }) {
 
   let _cleaner = undefined;
   let _cleaning = undefined;
@@ -44,7 +44,7 @@ function knexAdapter(client, options = { cleanup: "never" }) {
       : undefined;
   }
 
-  if (typeof options.cleanup == "number")
+  if (options.cleanup)
     _cleaner = setInterval(clean, options.cleanup * 1000);
 
   return class DbAdapter {

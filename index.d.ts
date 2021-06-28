@@ -3,7 +3,7 @@ import { Adapter, AdapterConstructor } from "oidc-provider";
 
 
 type AdapterOptions = {
-  cleanup: "never" | number = "never";
+  cleanup: false | number = false;
 };
 
 declare function knexAdapter(client: Knex, options: AdapterOptions = {}): AdapterConstructor;
