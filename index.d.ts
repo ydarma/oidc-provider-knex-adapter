@@ -3,10 +3,15 @@ import { Adapter, AdapterConstructor } from "oidc-provider";
 
 
 type AdapterOptions = {
-  cleanup: false | number = false;
+  cleanup: false | number;
 };
 
-declare function knexAdapter(client: Knex, options: AdapterOptions = {}): AdapterConstructor;
+type CleanUp = {
+  destroy(): void;
+  cleaning(): Promise<void>;
+}
+
+declare function knexAdapter(client: Knex, options?: AdapterOptions): AdapterConstructor & CleanUp;
 declare const defaultAdapter: Adapter;
 
 export default defaultAdapter;
